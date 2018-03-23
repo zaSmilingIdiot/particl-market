@@ -80,19 +80,23 @@ describe('/publish-image', () => {
     });
 
     test('GET  /item-images/:id/:imageVersion        Should fail to publish an item image because invalid image id', async () => {
+        expect.assertions(1);
         const imageId = 0;
-        const res = await api('GET', `/api/item-images/${imageId}/${imageVersion}`);
-        res.expectStatusCode(404);
-        expect(res.error).not.toBeNull();
-        expect(res.res).toBeUndefined();
+        try {
+            const res = await api('GET', `/api/item-images/${imageId}/${imageVersion}`);
+        } catch (ex) {
+            expect(true).toBe(true);
+        }
     });
 
     test('GET  /item-images/:id/:imageVersion        Should fail to publish an item image because invalid imageVersion', async () => {
+        expect.assertions(1);
         const version = 'test';
-        const res = await api('GET', `/api/item-images/${itemImageId}/${version}`);
-        res.expectStatusCode(404);
-        expect(res.error).not.toBeNull();
-        expect(res.res).toBeUndefined();
+        try {
+            const res = await api('GET', `/api/item-images/${itemImageId}/${version}`);
+        } catch (ex) {
+            expect(true).toBe(true);
+        }
     });
 
     test('POST  /item-images/template/:id        Should publish an item image', async () => {
@@ -126,7 +130,7 @@ describe('/publish-image', () => {
                 const img = res.res.body[i];
                 const imageRes = await api('GET', `/api/item-image-data/${img.id}`);
                 expect(imageRes.res.body.data.id).toBe(img.id);
-                expect(imageRes.res.body.data.protocol).toBe(img.protocol);
+                expect(imageRes.res.body.data.protocol).toBe('LOCAL');
                 expect(imageRes.res.body.data.encoding).toBe(img.encoding);
                 expect(imageRes.res.body.data.imageVersion).toBe(img.imageVersion);
                 expect(imageRes.res.body.data.itemImageId).toBe(img.itemImageId);
@@ -175,7 +179,7 @@ describe('/publish-image', () => {
                 const img = res.res.body[i];
                 const imageRes = await api('GET', `/api/item-image-data/${img.id}`);
                 expect(imageRes.res.body.data.id).toBe(img.id);
-                expect(imageRes.res.body.data.protocol).toBe(img.protocol);
+                expect(imageRes.res.body.data.protocol).toBe('LOCAL');
                 expect(imageRes.res.body.data.encoding).toBe(img.encoding);
                 expect(imageRes.res.body.data.imageVersion).toBe(img.imageVersion);
                 expect(imageRes.res.body.data.itemImageId).toBe(img.itemImageId);
