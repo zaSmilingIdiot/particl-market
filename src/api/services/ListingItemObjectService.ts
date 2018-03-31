@@ -90,23 +90,21 @@ export class ListingItemObjectService {
             throw new ValidationException('Request body is not valid', ['listing_item_id or listing_item_template_id missing']);
         }
 
-        // find the existing one without relatedb
-        const listingItemObject = await this.findOne(id, false);
+        // find the existing one without related
+        const listingItemObjectModel = await this.findOne(id, false);
 
         // set new values
-        listingItemObject.Type = body.type;
-        listingItemObject.Description = body.description;
-        listingItemObject.Order = body.order;
-        
+        listingItemObjectModel.Type = body.type;
+        listingItemObjectModel.Description = body.description;
+        listingItemObjectModel.Order = body.order;
+
+        // update listingItemObject record
+        const updatedListingItemObject = await this.listingItemObjectRepo.update(id, listingItemObjectModel.toJSON());
+
         // update listingItemObjectDatas
-        const listingItemObjectDatasOld = listingItemObject.ListingItemObjectDatas();
-        const objectDataIds: number[] = new Array();
-        listingItemObjectDatasOld.forEach((objectData: ListingItemObjectData) => {
-            objectDataIds.push(objectData.id);
-        });
-         
-        for (const objectDataId of objectDataIds) {
-            await this.listingItemObjectDataService.destroy(objectDataId);
+        const listingItemObject = listingItemObjectModel.toJSON();
+        for (const objectData of listingItemObject.ListingItemObjectDatas) {
+            await this.listingItemObjectDataService.destroy(objectData.id);
         }
 
         const listingItemObjectDatas = body.listingItemObjectDatas;
@@ -115,9 +113,6 @@ export class ListingItemObjectService {
             objectData.listing_item_object_id = listingItemObject.Id;
             await this.listingItemObjectDataService.create(objectData as ListingItemObjectDataCreateRequest);
         }
-
-        // update listingItemObject record
-        const updatedListingItemObject = await this.listingItemObjectRepo.update(id, listingItemObject.toJSON());
 
         return updatedListingItemObject;
     }
