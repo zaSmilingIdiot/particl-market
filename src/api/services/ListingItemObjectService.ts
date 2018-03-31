@@ -101,7 +101,7 @@ export class ListingItemObjectService {
         // update listingItemObjectDatas
         const listingItemObjectDatasOld = listingItemObject.ListingItemObjectDatas();
         const objectDataIds: number[] = new Array();
-        listingItemObjectDatasOld.forEach((objectData: ListingItemObjectData): void {
+        listingItemObjectDatasOld.forEach((objectData: ListingItemObjectData) => {
             objectDataIds.push(objectData.id);
         });
          
