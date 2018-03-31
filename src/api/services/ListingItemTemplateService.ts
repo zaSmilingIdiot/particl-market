@@ -59,6 +59,20 @@ export class ListingItemTemplateService {
     }
 
     /**
+     *
+     * @param hash, hash of the listing Item.
+     * @returns {Promise<ListingItem>}
+     */
+    public async findOneByHash(hash: string): Promise<ListingItemTemplate> {
+        const listingItem = await this.listingItemTemplateRepo.findOneByHash(hash);
+        if (listingItem === null) {
+            this.log.warn(`ListingItem with the hash=${hash} was not found!`);
+            throw new NotFoundException(hash);
+        }
+        return listingItem;
+    }
+
+    /**
      * search ListingItemTemplates using given ListingItemTemplateSearchParams
      *
      * @param options

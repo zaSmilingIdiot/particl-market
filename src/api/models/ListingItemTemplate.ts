@@ -10,33 +10,41 @@ import { ListingItemTemplateSearchParams } from '../requests/ListingItemTemplate
 
 export class ListingItemTemplate extends Bookshelf.Model<ListingItemTemplate> {
 
+    public static RELATIONS = [
+        'ItemInformation',
+        'ItemInformation.ItemCategory',
+        'ItemInformation.ItemLocation',
+        'ItemInformation.ItemLocation.LocationMarker',
+        'ItemInformation.ItemImages',
+        'ItemInformation.ItemImages.ItemImageDatas',
+        'ItemInformation.ShippingDestinations',
+        'PaymentInformation',
+        'PaymentInformation.Escrow',
+        'PaymentInformation.Escrow.Ratio',
+        'PaymentInformation.ItemPrice',
+        'PaymentInformation.ItemPrice.ShippingPrice',
+        'PaymentInformation.ItemPrice.CryptocurrencyAddress',
+        'MessagingInformation', // TODO: should be MessagingInformations
+        'ListingItemObjects',
+        'ListingItemObjects.ListingItemObjectDatas',
+        'ListingItems',
+        'Profile'
+    ];
+
     public static async fetchById(value: number, withRelated: boolean = true): Promise<ListingItemTemplate> {
         if (withRelated) {
             return await ListingItemTemplate.where<ListingItemTemplate>({ id: value }).fetch({
-                withRelated: [
-                    'ItemInformation',
-                    'ItemInformation.ItemCategory',
-                    'ItemInformation.ItemLocation',
-                    'ItemInformation.ItemLocation.LocationMarker',
-                    'ItemInformation.ItemImages',
-                    'ItemInformation.ItemImages.ItemImageDatas',
-                    'ItemInformation.ShippingDestinations',
-                    'PaymentInformation',
-                    'PaymentInformation.Escrow',
-                    'PaymentInformation.Escrow.Ratio',
-                    'PaymentInformation.ItemPrice',
-                    'PaymentInformation.ItemPrice.ShippingPrice',
-                    'PaymentInformation.ItemPrice.CryptocurrencyAddress',
-                    'MessagingInformation', // TODO: should be MessagingInformations
-                    'ListingItemObjects',
-                    'ListingItemObjects.ListingItemObjectDatas',
-                    'ListingItems',
-                    'Profile'
-                ]
+                withRelated: this.RELATIONS
             });
         } else {
             return await ListingItemTemplate.where<ListingItemTemplate>({ id: value }).fetch();
         }
+    }
+
+    public static async fetchByHash(value: string): Promise<ListingItemTemplate> {
+        return await ListingItem.where<ListingItemTemplate>({ hash: value }).fetch({
+            withRelated: this.RELATIONS
+        });
     }
 
     public static async searchBy(options: ListingItemTemplateSearchParams, withRelated: boolean = true): Promise<Collection<ListingItemTemplate>> {

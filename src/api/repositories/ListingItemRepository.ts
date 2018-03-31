@@ -32,6 +32,7 @@ export class ListingItemRepository {
     }
 
     /**
+     * todo: add withRelated
      *
      * @param hash
      * @returns {Promise<ListingItem>}

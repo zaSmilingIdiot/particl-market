@@ -159,6 +159,12 @@ export class ListingItemActionService {
             const listingItemCreateRequest = await this.listingItemFactory.getModel(listingItemMessage, market.id, rootCategory);
             // this.log.debug('process(), listingItemCreateRequest:', JSON.stringify(listingItemCreateRequest, null, 2));
 
+            // link with template if template exists
+            const listingItemTemplate = await this.listingItemTemplateService.findOneByHash(listingItemMessage.hash);
+            if (listingItemTemplate) {
+                listingItemCreateRequest.listing_item_template_id = listingItemTemplate.Id;
+            }
+
             const listingItemModel = await this.listingItemService.create(listingItemCreateRequest);
             const listingItem = listingItemModel.toJSON();
 

@@ -28,6 +28,15 @@ export class ListingItemTemplateRepository {
     }
 
     /**
+     * TODO: add withRelated
+     * @param hash
+     * @returns {Promise<ListingItem>}
+     */
+    public async findOneByHash(hash: string): Promise<ListingItemTemplate> {
+        return this.ListingItemTemplateModel.fetchByHash(hash);
+    }
+
+    /**
      * todo: optionally fetch withRelated
      *
      * @param options, ListingItemSearchParams
