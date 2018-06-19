@@ -131,12 +131,12 @@ export class OrderItemStatusCommand extends BaseCommand implements RpcCommandInt
 
     // tslint:disable:max-line-length
     public usage(): string {
-        return this.getName() + ' [<itemhash|*> [<buyer|*> [<seller|*>]]]';
+        return this.getName() + ' [<listingItemHash|*> [<buyer|*> [<seller|*>]]]';
     }
 
     public help(): string {
         return this.usage() + ' -  ' + this.description() + ' \n'
-            + '<itemHash|*> - The hash of the order item we want to get the status of. \n'
+            + '<listingItemHash|*> - The hash of the order item we want to get the status of. \n'
             + '               Can use * for wildcard. \n'
             + '<buyer|*>    - The buyer of the order items we want to get the status of. \n'
             + '               Can use * for wildcard. \n'

@@ -157,7 +157,8 @@ export class BidActionService {
         //    outputsSum
         //    outputsChangeAmount
         // }
-        const buyerSelectedOutputData: OutputData = await this.findUnspentOutputs(requiredAmount);
+        const unspentOutputs = await this.coreRpcService.listUnspent(1, 99999999, [], false);
+        const buyerSelectedOutputData: OutputData = await this.findUnspentOutputs(requiredAmount, unspentOutputs);
 
         // changed to getNewAddress, since getaccountaddress doesn't return address which we can get the pubkey from
         const buyerEscrowPubAddress = await this.coreRpcService.getNewAddress(['_escrow_pub_' + listingItem.hash], false);
@@ -207,11 +208,7 @@ export class BidActionService {
      * @param {number} requiredAmount
      * @returns {Promise<any>}
      */
-    public async findUnspentOutputs(requiredAmount: number): Promise<OutputData> {
-
-        // get all unspent transaction outputs
-        const unspentOutputs = await this.coreRpcService.listUnspent(1, 99999999, [], false);
-
+    public async findUnspentOutputs(requiredAmount: number, unspentOutputs): Promise<OutputData> {
         if (!unspentOutputs || unspentOutputs.length === 0) {
             this.log.warn('No unspent outputs');
             throw new MessageException('No unspent outputs');
@@ -233,7 +230,7 @@ export class BidActionService {
                 });
             }
 
-            // todo: get the actual fee
+            // todo: get the actual fee 
             // check whether we have collected enough outputs to pay for the item and
             // calculate the change amount
             // requiredAmount, for MPA_BID: (totalPrice * 2)
@@ -373,27 +370,14 @@ export class BidActionService {
         //    outputsSum
         //    outputsChangeAmount
         // }
-        const sellerSelectedOutputData: OutputData = await this.findUnspentOutputs(requiredAmount);
+        // get all unspent transaction outputs
+        const sellerUnspentOutputs: Output[] = await this.coreRpcService.listUnspent(1, 99999999, [], false);
+        const sellerSelectedOutputData: OutputData = await this.findUnspentOutputs(requiredAmount, sellerUnspentOutputs);
 
         // create OutputData for buyer
         const buyerSelectedOutputs: Output[] = JSON.parse(this.getValueFromBidDatas(BidDataValue.BUYER_OUTPUTS, bid.BidDatas));
-        const buyerOutputsSum = buyerSelectedOutputs.reduce((acc, obj) => {
-            const amount = obj.amount || 0; return acc + amount;
-        }, 0);
         const buyerRequiredAmount = totalPrice * 2;
-        const buyerSelectedOutputsChangeAmount = +(buyerOutputsSum - buyerRequiredAmount - 0.0002).toFixed(8);
-
-        // TODO: validate that the outputs are not spent
-        if (buyerOutputsSum < buyerRequiredAmount) {
-            this.log.warn('Not enough funds');
-            throw new MessageException('Not enough funds');
-        }
-
-        const buyerSelectedOutputData: OutputData = {
-            outputs: buyerSelectedOutputs,
-            outputsSum: buyerOutputsSum,
-            outputsChangeAmount: buyerSelectedOutputsChangeAmount
-        };
+        const buyerSelectedOutputData: OutputData = await this.findUnspentOutputs(buyerRequiredAmount, buyerSelectedOutputs);
 
         this.log.debug('sellerSelectedOutputData: ', JSON.stringify(sellerSelectedOutputData, null, 2));
         this.log.debug('buyerSelectedOutputData: ', JSON.stringify(buyerSelectedOutputData, null, 2));

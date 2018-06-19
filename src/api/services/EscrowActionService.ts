@@ -33,6 +33,7 @@ import { OrderSearchParams } from '../requests/OrderSearchParams';
 import { LockedOutputService } from './LockedOutputService';
 import { BidDataValue } from '../enums/BidDataValue';
 
+import { OutputData } from './BidActionService';
 
 export class EscrowActionService {
 
@@ -376,6 +377,167 @@ export class EscrowActionService {
         return actionMessage;
     }
 
+    /** Copied and pasted from BidActionService.
+     * 
+     * @param {string} key
+     * @param {"resources".BidData[]} bidDatas
+     * @returns {any}
+     */
+    getValueFromBidDatas(key, bidDatas) {
+        const value = bidDatas.find(kv => kv.dataId === key);
+        if (value) {
+            return value.dataValue;
+        }
+        else {
+            this.log.error('Missing BidData value for key: ' + key);
+            throw new MessageException('Missing BidData value for key: ' + key);
+        }
+    }
+
+    /** Copied and pasted from BidActionService.
+     *   TODO: Delete when those two files are merged.
+     *
+     * find unspent outputs for the required amount
+     *
+     * @param {number} requiredAmount
+     * @returns {Promise<any>}
+     */
+    public async findUnspentOutputs(requiredAmount: number, unspentOutputs): Promise<OutputData> {
+        if (!unspentOutputs || unspentOutputs.length === 0) {
+            this.log.warn('No unspent outputs');
+            throw new MessageException('No unspent outputs');
+        }
+
+        this.log.debug('unspent outputs amount: ', unspentOutputs.length);
+
+        const selectedOutputs: Output[] = [];
+        let selectedOutputsSum = 0;
+        let selectedOutputsChangeAmount = 0;
+
+        unspentOutputs.find(output => {
+            if (output.spendable && output.solvable) {
+                selectedOutputsSum += output.amount;
+                selectedOutputs.push({
+                    txid: output.txid,
+                    vout: output.vout,
+                    amount: output.amount
+                });
+            }
+
+            // todo: get the actual fee 
+            // check whether we have collected enough outputs to pay for the item and
+            // calculate the change amount
+            // requiredAmount, for MPA_BID: (totalPrice * 2)
+            // requiredAmount, for MPA_ACCEPT: totalPrice
+
+            if (selectedOutputsSum > requiredAmount) {
+                selectedOutputsChangeAmount = +(selectedOutputsSum - requiredAmount - 0.0002).toFixed(8);
+                return true;
+            }
+            return false;
+        });
+
+        if (selectedOutputsSum < requiredAmount) {
+            this.log.warn('Not enough funds');
+            throw new MessageException('Not enough funds');
+        }
+
+        // todo: type
+        const response: OutputData = {
+            outputs: selectedOutputs,
+            outputsSum: selectedOutputsSum,
+            outputsChangeAmount: selectedOutputsChangeAmount
+        };
+
+        this.log.debug('selected outputs:', JSON.stringify(response, null, 2));
+
+        return response;
+    }
+
+    /** Copied and pasted from BidActionService.
+     *   TODO: Delete when those two files are merged.
+     *
+     * @param {string} escrowMultisigAddress
+     * @param {string} sellerEscrowChangeAddress
+     * @param {string} buyerEscrowChangeAddress
+     * @param {OutputData} sellerSelectedOutputData
+     * @param {OutputData} buyerSelectedOutputData
+     * @param {string} sellerEscrowPubAddressPublicKey
+     * @param {string} buyerEscrowPubAddressPublicKey
+     * @param {number} itemTotalPrice
+     * @param {string} listingItemHash
+     * @returns {any}
+     */
+    public createTxOut(escrowMultisigAddress: string,
+                       sellerEscrowChangeAddress: string,
+                       buyerEscrowChangeAddress: string,
+                       sellerSelectedOutputData: OutputData,
+                       buyerSelectedOutputData: OutputData,
+                       sellerEscrowPubAddressPublicKey: string,
+                       buyerEscrowPubAddressPublicKey: string,
+                       itemTotalPrice: number,
+                       listingItemHash: string): any {
+
+        // txout: {
+        //   escrowMultisigAddress: amount that should be escrowed
+        //   sellerEscrowChangeAddress: sellers change amount
+        //   buyerEscrowChangeAddress: buyers change amount
+        // }
+        const txout = {};
+
+
+        this.log.debug('sellerEscrowPubAddressPublicKey: ', sellerEscrowPubAddressPublicKey);
+        this.log.debug('buyerEcrowPubAddressPublicKey: ', buyerEscrowPubAddressPublicKey);
+        this.log.debug('listingItem.hash: ', listingItemHash);
+
+        txout[escrowMultisigAddress] = +(itemTotalPrice * 3).toFixed(8); // TODO: Shipping... ;(
+        txout[sellerEscrowChangeAddress] = sellerSelectedOutputData.outputsChangeAmount;
+        txout[buyerEscrowChangeAddress] = buyerSelectedOutputData.outputsChangeAmount;
+
+
+        // this.log.debug('buyerOutputs: ', JSON.stringify(buyerSelectedOutputData.outputs, null, 2));
+
+        // TODO: Verify that buyers outputs are unspent?? :/
+        // TODO: Refactor reusable logic. and verify / validate buyer change.
+
+        if (!_.isEmpty(buyerSelectedOutputData.outputs)) {
+            let buyerOutputsSum = 0;
+            let buyerOutputsChangeAmount = 0;
+
+            buyerSelectedOutputData.outputs.forEach(output => {
+                const amount = output.amount || 0;
+                buyerOutputsSum += amount;
+                if (buyerOutputsSum > itemTotalPrice * 2) { // TODO: Ratio
+                    buyerOutputsChangeAmount = +(buyerOutputsSum - (itemTotalPrice * 2) - 0.0001).toFixed(8); // TODO: Get actual fee...
+                    return;
+                }
+            });
+
+            // todo: calculate buyers requiredAmount from Ratio
+            // check that buyers outputs contain enough funds
+            if (buyerOutputsSum < itemTotalPrice * 2) {
+                this.log.warn('Buyers outputs do not contain enough funds!');
+                throw new MessageException('Buyers outputs do not contain enough funds!');
+            }
+            txout[buyerEscrowChangeAddress] = buyerSelectedOutputData.outputsChangeAmount;
+
+        } else {
+            this.log.error('Buyer didn\'t supply outputs!');
+            throw new MessageException('Buyer didn\'t supply outputs!'); // TODO: proper message for no outputs :P
+        }
+
+        // TODO: Decide if we want this on the blockchain or not...
+        // TODO: Think about how to recover escrow information to finalize transactions should client pc / database crash..
+
+        //
+        // txout['data'] = unescape(encodeURIComponent(data.params[0]))
+        //    .split('').map(v => v.charCodeAt(0).toString(16)).join('').substr(0, 80);
+        //
+
+        return txout;
+    }
+
+
     /**
      * Creates rawtx based on params
      *
@@ -447,7 +609,55 @@ export class EscrowActionService {
                 // validate the escrow amounts
                 const decodedTx = await this.coreRpcService.decodeRawTransaction(rawtx);
                 this.log.debug('createRawTx(), decoded:', JSON.stringify(decodedTx, null, 2));
-                // TODO: validation
+                
+                // Validation of received Tx before completing the transaction
+                /*
+                 * First generate a tx from the original data
+                 */
+                // Copy and pasted from BidActionService.generateBidDatasForMPA_ACCEPT
+                // todo: price type...
+                const shippingPrice = bid.ListingItem.PaymentInformation.ItemPrice.ShippingPrice;
+                const basePrice = bid.ListingItem.PaymentInformation.ItemPrice.basePrice;
+                const shippingPriceMax = Math.max(shippingPrice.international, shippingPrice.domestic);
+                const totalPrice = basePrice + shippingPriceMax; // TODO: Determine if local or international...
+                const requiredAmount = totalPrice; // todo: sellers required amount
+                // todo: calculate totalprice using the items escrowratio
+
+                // get all unspent transaction outputs
+                let sellerUnspentOutputs: Output[];
+                let sellerSelectedOutputData: OutputData;
+                try {
+                    sellerUnspentOutputs = await this.coreRpcService.listUnspent(1, 99999999, [], false);
+                    sellerSelectedOutputData = await this.findUnspentOutputs(requiredAmount, sellerUnspentOutputs);
+                } catch(ex) {
+                    this.log.error(ex);
+                    throw ex;
+                }
+
+                // create OutputData for buyer
+                try {
+                    const buyerSelectedOutputs: Output[] = JSON.parse(this.getValueFromBidDatas(BidDataValue.BUYER_OUTPUTS, bid.BidDatas));
+                    const buyerRequiredAmount = totalPrice * 2;
+                    const buyerSelectedOutputData: OutputData = await this.findUnspentOutputs(buyerRequiredAmount, buyerSelectedOutputs);
+
+                    const createdTx = this.createTxOut(escrowMultisigAddress,
+                           orderItem.Order.seller,
+                           orderItem.Order.buyer,
+                           sellerSelectedOutputData,
+                           buyerSelectedOutputData,
+                           sellerEscrowPubAddressPublicKey,
+                           buyerEscrowPubAddressPublicKey,
+                           totalPrice,
+                           orderItem.itemHash);
+                    this.log.debug('createTxOut(), created:', JSON.stringify(createdTx, null, 2));
+                } catch (ex) {
+                    this.log.error(ex);
+                    throw ex;
+                }
+
+                /*
+                 * TODO: Then check it matches the one received
+                 */
 
                 // buyer signs the escrow tx, which should complete
                 const signedForLock = await this.signRawTx(rawtx, true);
@@ -646,3 +856,4 @@ export class EscrowActionService {
         return updatedOrderItem;
     }
 }
+
