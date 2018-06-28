@@ -15,6 +15,7 @@ import { BidFactory } from '../factories/BidFactory';
 import { SmsgService } from './SmsgService';
 import { CoreRpcService } from './CoreRpcService';
 import { ListingItemService } from './ListingItemService';
+import { ListingItemTemplateService } from './ListingItemTemplateService';
 import { SmsgSendResponse } from '../responses/SmsgSendResponse';
 import { Profile } from '../models/Profile';
 import { MarketplaceMessage } from '../messages/MarketplaceMessage';
@@ -53,6 +54,7 @@ export class BidActionService {
 
     constructor(
         @inject(Types.Service) @named(Targets.Service.ListingItemService) private listingItemService: ListingItemService,
+        @inject(Types.Service) @named(Targets.Service.ListingItemTemplateService) private listingItemTemplateService: ListingItemTemplateService,
         @inject(Types.Service) @named(Targets.Service.MarketService) public marketService: MarketService,
         @inject(Types.Service) @named(Targets.Service.ActionMessageService) public actionMessageService: ActionMessageService,
         @inject(Types.Service) @named(Targets.Service.ProfileService) public profileService: ProfileService,
@@ -699,7 +701,7 @@ export class BidActionService {
             throw new MessageException('Missing mpaction.');
         }
 
-        const listingItemModel = await this.listingItemService.findOneByHash(message.mpaction.item);
+        const listingItemModel = await this.listingItemService.findOneByHash(bidMessage.item);
         const listingItem = listingItemModel.toJSON();
 
         // todo: check that the listingitem is yours
@@ -970,7 +972,19 @@ export class BidActionService {
         const bidCreateRequest = await this.bidFactory.getModel(bidMessage, listingItem.id, bidder);
 
         // make sure the bids address type is correct
+        // this.log.debug('found listingItem: ', JSON.stringify(listingItem, null, 2));
         this.log.debug('found listingItem.id: ', listingItem.id);
+
+        let listingItemTemplate: any;
+        try {
+            listingItemTemplate = await this.listingItemTemplateService.findOneByHash(listingItem.hash, true);
+            // this.log.debug(`found listingItem template using id ${listingItem.id}: `, JSON.stringify(listingItemTemplate));
+            listingItemTemplate = listingItemTemplate.toJSON();
+            listingItemTemplate.hash = listingItem.hash;
+            listingItem.ListingItemTemplate = listingItemTemplate;
+        } catch (ex) {
+            // do nothing, just means we're the buyer, not seller
+        }
 
         if (!_.isEmpty(listingItem.ListingItemTemplate)) { // local profile is selling
             this.log.debug('listingItem has template: ', listingItem.ListingItemTemplate.id);
@@ -978,9 +992,10 @@ export class BidActionService {
             bidCreateRequest.address.type = AddressType.SHIPPING_BID;
             bidCreateRequest.address.profile_id = listingItem.ListingItemTemplate.Profile.id;
         } else { // local profile is buying
-            this.log.debug('listingItem has no template ');
+            this.log.debug('listingItem has no template, that means a local profile is the buyer.');
             this.log.debug('bidder: ', bidder);
             const profileModel = await this.profileService.findOneByAddress(bidder);
+            this.log.debug('profile model: ', JSON.stringify(profileModel));
             const profile = profileModel.toJSON();
             bidCreateRequest.address.type = AddressType.SHIPPING_BID;
             bidCreateRequest.address.profile_id = profile.id;
