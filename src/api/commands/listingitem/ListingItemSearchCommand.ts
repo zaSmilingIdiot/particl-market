@@ -53,11 +53,6 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
         const type = data.params[4] || 'ALL';
         const profileId = data.params[5] || 'ALL';
 
-        // check valid search type
-        if (!ListingItemSearchType[type]) {
-            throw new MessageException('Type should be FLAGGED | PENDING | LISTED | IN_ESCROW | SHIPPED | SOLD | EXPIRED | ALL');
-        }
-
         // check vaild profile profileId search params
         if (typeof profileId !== 'number' && profileId !== 'OWN' && profileId !== 'ALL' && profileId !== '*') {
             throw new MessageException('Value needs to be number | OWN | ALL. you could pass * as all too');
@@ -73,15 +68,11 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
             shippingCountryCode = ShippingCountries.validate(this.log, data.params[9]);
         }
 
-        // TODO: this type search does not really make sense
-        // TODO: searching for items that youre buying or selling should be done with bid or orderitem search
-        // TODO: ...so remove type
         return await this.listingItemService.search({
             page: data.params[0] || 1,
             pageLimit: data.params[1] || 5, // default page limit 5
             order: data.params[2] || 'ASC',
             category: data.params[3],
-            type,
             profileId,
             minPrice: data.params[6],
             maxPrice: data.params[7],
@@ -94,7 +85,7 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
     // tslint:disable:max-line-length
     public usage(): string {
         return this.getName() + ' [<page> [<pageLimit> [<ordering> ' +
-        '[(<categoryId> | <categoryName>)[ <type> [(<profileId>| OWN | ALL) [<minPrice> [ <maxPrice> [ <country> [ <shippingDestination> [<searchString>]]]]]]]]]]';
+        '[(<categoryId> | <categoryName>)[ (<profileId>| OWN | ALL) [<minPrice> [ <maxPrice> [ <country> [ <shippingDestination> [<searchString>]]]]]]]]]';
     }
 
     public help(): string {
@@ -107,15 +98,6 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
             + '                                with the listing items we want to search for. \n'
             + '    <categoryName>           - [optional] String - The key identifying the category associated \n'
             + '                                with the listing items we want to search for. \n'
-            + '    <type>                  -  ENUM{FLAGGED | PENDING | LISTED | IN_ESCROW | SHIPPED | SOLD | EXPIRED | ALL} \n'
-            + '                                 FLAGGED = ListingItems you have flagged \n'
-            + '                                 PENDING = ListingItemTemplates posted to marketplace\n'
-            + '                                           but not yet received as ListingItem \n'
-            + '                                 IN_ESCROW = ListingItems that are escrow \n'
-            + '                                 SHIPPED = ListingItems that have been shipped \n'
-            + '                                 SOLD = ListingItems that have been sold \n'
-            + '                                 EXPIRED = ListingItems that have been expired \n'
-            + '                                 ALL = all items\n'
             + '    <profileId>             -  (NUMBER | OWN | ALL | *) \n'
             + '                                 NUMBER - ListingItems belonging to profileId \n'
             + '                                 OWN - ListingItems belonging to any profile \n'
