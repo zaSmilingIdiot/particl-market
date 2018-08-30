@@ -124,22 +124,19 @@ export class CoreRpcService implements RPC {
 
             // ... Step 3: If no summed values found, attempt to split a large enough output.
             if (utxoIdxs.length === 0 && maxOutputIdx !== -1 && toSatoshis(unspent[maxOutputIdx].amount) > reqSatoshis) {
-                // TODO: fix this to actually do proper splitting. Currently just uses the found utxo
-
-                // const newAddr = await this.call('getnewaddress', []);
-                // const txid: string = await this.call('sendtoaddress', [newAddr, fromSatoshis(reqSatoshis), 'Splitting output']);
-                // const txData: any = await this.call('getrawtransaction', [txid, true]);
-                // const outData: any = txData.vout.find(outObj => outObj.valueSat === reqSatoshis);
-                // if (outData) {
-                //     chosen.push({
-                //         txid: txData.txid,
-                //         vout: outData.n,
-                //         _satoshis: outData.valueSat,
-                //         _scriptPubKey: outData.scriptPubKey.hex,
-                //         _address: newAddr
-                //     });
-                // }
-                utxoIdxs.push(maxOutputIdx);
+                const newAddr = await this.call('getnewaddress', []);
+                const txid: string = await this.call('sendtoaddress', [newAddr, fromSatoshis(reqSatoshis), 'Split output']);
+                const txData: any = await this.call('getrawtransaction', [txid, true]);
+                const outData: any = txData.vout.find( outObj => outObj.valueSat === reqSatoshis );
+                if (outData) {
+                    chosen.push({
+                        txid: txData.txid,
+                        vout: outData.n,
+                        _satoshis: outData.valueSat,
+                        _scriptPubKey: outData.scriptPubKey.hex,
+                        _address: newAddr
+                    });
+                }
             }
         } else {
             // Push the exact match.
