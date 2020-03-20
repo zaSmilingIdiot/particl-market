@@ -241,20 +241,19 @@ export class ServerStartedListener implements interfaces.Listener {
 
         this.log.debug('isUpdatingFromSingleMarketWallet(), hasMarketWallet: ', hasMarketWallet);
 
-        const profileIdentity: resources.Identity | undefined = await this.defaultProfileService.getDefault(true)
-            .then(defaultProfile => {
-                return _.find(defaultProfile.Identities, identity => {
-                    return identity.type === IdentityType.PROFILE;
-                });
-            })
-            .catch(reason => {
-                // for some reason we have a wallet but theres no default Profile, this is not a normal situation, somethings broken
-                return undefined;
-            });
+        const defaultProfile: resources.Profile = await this.defaultProfileService.getDefault(true);
+        // there is old market wallet, but no Profile -> not updating
+        if (hasMarketWallet && _.isEmpty(defaultProfile)) {
+            return false;
+        }
 
+        // try to find the Profile Identity
+        const profileIdentity: resources.Identity | undefined = _.find(defaultProfile.Identities, identity => {
+            return identity.type === IdentityType.PROFILE;
+        });
         this.log.debug('isUpdatingFromSingleMarketWallet(), profileIdentity: ', profileIdentity);
 
-        // there is old market wallet, but no profile Identity (or default Profile) -> need to update
+        // there is old market wallet, but no Profile Identity was found -> need to update
         if (hasMarketWallet && _.isEmpty(profileIdentity)) {
             return true;
         }
