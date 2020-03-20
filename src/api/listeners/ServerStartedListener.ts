@@ -234,17 +234,27 @@ export class ServerStartedListener implements interfaces.Listener {
     private async isUpgradingFromSingleMarketWallet(): Promise<boolean> {
 
         const hasMarketWallet = await this.coreRpcService.walletExists('market');
+        if (!hasMarketWallet) {
+            // if we dont have the market wallet, we can't be upgrading it
+            return false;
+        }
 
         this.log.debug('isUpdatingFromSingleMarketWallet(), hasMarketWallet: ', hasMarketWallet);
 
-        const defaultProfile: resources.Profile = await this.defaultProfileService.getDefault(true);
-        const profileIdentity: resources.Identity | undefined = _.find(defaultProfile.Identities, identity => {
-            return identity.type === IdentityType.PROFILE;
-        });
+        const profileIdentity: resources.Identity | undefined = await this.defaultProfileService.getDefault(true)
+            .then(defaultProfile => {
+                return _.find(defaultProfile.Identities, identity => {
+                    return identity.type === IdentityType.PROFILE;
+                });
+            })
+            .catch(reason => {
+                // for some reason we have a wallet but theres no default Profile, this is not a normal situation, somethings broken
+                return undefined;
+            });
 
         this.log.debug('isUpdatingFromSingleMarketWallet(), profileIdentity: ', profileIdentity);
 
-        // there is old market wallet, but no profile Identity -> need to update
+        // there is old market wallet, but no profile Identity (or default Profile) -> need to update
         if (hasMarketWallet && _.isEmpty(profileIdentity)) {
             return true;
         }
