@@ -103,6 +103,10 @@ export class ServerStartedListener implements interfaces.Listener {
             if (this.coreConnectionStatusService.connectionStatus === CoreConnectionStatusServiceStatus.CONNECTED
                 && this.BOOTSTRAPPING) {
                 this.STOP = await this.bootstrap()
+                    .then((started) => {
+                        this.isStarted = started;
+                        return started;
+                    })
                     .catch(reason => {
                         this.log.error('ERROR: marketplace bootstrap failed: ', reason);
                         // stop if there's an error
@@ -203,7 +207,7 @@ export class ServerStartedListener implements interfaces.Listener {
             throw new MessageException('Missing default Market configuration.');
         }
 
-        this.log.debug('bootstrap(), DONE');
+        this.log.info('bootstrap(), DONE');
 
         return true;
     }
