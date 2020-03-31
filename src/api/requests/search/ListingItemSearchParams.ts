@@ -17,7 +17,7 @@ export class ListingItemSearchParams extends RequestBody {
     @IsNotEmpty()
     @IsEnum(SearchOrder)
     public order: SearchOrder;
-    public category: string | number;
+    public category: string | number | Array<string|number>;
     // @ValidateIf(o => o.type)
     // @IsEnum(ListingItemSearchType)
     public type: ListingItemSearchType; // TODO: not used for anything

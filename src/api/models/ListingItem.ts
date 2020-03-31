@@ -174,6 +174,20 @@ export class ListingItem extends Bookshelf.Model<ListingItem> {
                     qb.innerJoin('item_categories', 'item_categories.id', 'item_informations.item_category_id');
                     qb.where('item_categories.key', '=', options.category);
                     ListingItem.log.debug('...searchBy by category.key: ', options.category);
+                } else if (
+                    options.category &&
+                    (Object.prototype.toString.call(options.category) === '[object Array]') &&
+                    (typeof options.category[0] === 'number')
+                ) {
+                    qb.innerJoin('item_categories', 'item_categories.id', 'item_informations.item_category_id');
+                    qb.whereIn('item_categories.id', options.category as number[]);
+                } else if (
+                    options.category &&
+                    (Object.prototype.toString.call(options.category) === '[object Array]') &&
+                    typeof options.category[0] === 'string'
+                ) {
+                    qb.innerJoin('item_categories', 'item_categories.id', 'item_informations.item_category_id');
+                    qb.whereIn('item_categories.key', options.category as string[]);
                 }
 
                 // searchBy by profile

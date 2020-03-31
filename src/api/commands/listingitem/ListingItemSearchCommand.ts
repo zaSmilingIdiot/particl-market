@@ -74,7 +74,7 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
      *  [0]: page, number, 0-based
      *  [1]: pageLimit, number
      *  [2]: order, SearchOrder
-     *  [3]: category, number|string, if string, try to find using key, can be null
+     *  [3]: category, number|string|<number|string>[], if string, try to find using key, can be null
      *  [4]: type (FLAGGED | PENDING | LISTED | IN_ESCROW | SHIPPED | SOLD | EXPIRED | ALL)
      *  TODO: type is deprecated, remove!!
      *  [5]: profileId, (NUMBER | OWN | ALL | *)
@@ -108,12 +108,24 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
             throw new InvalidParamException('pageLimit', 'number');
         } else if (data.params[2] && typeof data.params[2] !== 'string') {
             throw new InvalidParamException('order', 'string');
-        } else if (data.params[3] && typeof data.params[4] !== 'string') {
+        } else if (data.params[4] && typeof data.params[4] !== 'string') {
             throw new InvalidParamException('type', 'string');
         } else if (data.params[6] && typeof data.params[6] !== 'number') {
             throw new InvalidParamException('minPrice', 'number');
         } else if (data.params[7] && typeof data.params[7] !== 'number') {
             throw new InvalidParamException('maxPrice', 'number');
+        }
+
+        if (data.params[3]) {
+            const categoryType = Object.prototype.toString.call(data.params[3]);
+            let hasError = !((categoryType === '[object Number]') || (categoryType === '[object String]') || (categoryType === '[object Array]'));
+            if (categoryType !== '[object Array]') {
+                hasError = hasError || (typeof data.params[3][0] === 'number' && (data.params[3].find((id: any) => typeof id !== 'number') !== -1));
+                hasError = hasError || (typeof data.params[3][0] === 'string' && (data.params[3].find((value: any) => typeof value !== 'string') !== -1));
+            }
+            if (hasError) {
+                throw new InvalidParamException('category', 'number | string | <number|string>[]');
+            }
         }
 
         // check valid profile profileId searchBy params
@@ -135,22 +147,20 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
 
     // TODO: fix this, these params are not optional
     public usage(): string {
-        return this.getName() + ' [<page> [<pageLimit> [<ordering> ' +
-            '[(<categoryId> | <categoryName>)[ <type> [(<profileId>| OWN | ALL) [<minPrice> [ <maxPrice> [ <country> [ <shippingDestination>' +
-            ' [<searchString> [<flagged>]]]]]]]]]]]';
+        return this.getName() + '<page> <pageLimit> <ordering> ' +
+            '[(<categoryId> | <categoryName> | <categoryId|categoryName>[]) [ <type> [(<profileId>| OWN | ALL) [<minPrice> [ <maxPrice>' +
+            ' [ <country> [ <shippingDestination> [<searchString> [<flagged>]]]]]]]]]';
     }
 
     public help(): string {
         return this.usage() + ' -  ' + this.description() + ' \n'
-            + '    <page>                   - [optional] Numeric - The number page we want to \n'
+            + '    <page>                   - Numeric - The number page we want to \n'
             + '                                view of searchBy listing item results. \n'
-            + '    <pageLimit>              - [optional] Numeric - The number of results per page. \n'
-            + '    <ordering>               - [optional] ENUM{ASC,DESC} - The ordering of the searchBy results. \n'
-            + '    <categoryId>             - [optional] Numeric - The ID identifying the category associated \n'
-            + '                                with the listing items we want to searchBy for. \n'
-            + '    <categoryName>           - [optional] String - The key identifying the category associated \n'
-            + '                                with the listing items we want to searchBy for. \n'
-            + '    <type>                  -  ENUM{FLAGGED | PENDING | LISTED | IN_ESCROW | SHIPPED | SOLD | EXPIRED | ALL} \n'
+            + '    <pageLimit>              - Numeric - The number of results per page. \n'
+            + '    <ordering>               - ENUM{ASC,DESC} - The ordering of the searchBy results. \n'
+            + '    <category>               - [optional] Numeric | String | <Numeric | String>[] - The ID(s) or key(s) \n'
+            + '                                 identifying the category associated with the listing items we want to searchBy for. \n'
+            + '    <type>                   -  ENUM{FLAGGED | PENDING | LISTED | IN_ESCROW | SHIPPED | SOLD | EXPIRED | ALL} \n'
             + '                                 FLAGGED = ListingItems you have flagged \n'
             + '                                 PENDING = ListingItemTemplates posted to market\n'
             + '                                           but not yet received as ListingItem \n'
@@ -159,7 +169,7 @@ export class ListingItemSearchCommand extends BaseCommand implements RpcCommandI
             + '                                 SOLD = ListingItems that have been sold \n'
             + '                                 EXPIRED = ListingItems that have been expired \n'
             + '                                 ALL = all items\n'
-            + '    <profileId>             -  (NUMBER | OWN | ALL | *) \n'
+            + '    <profileId>              -  (NUMBER | OWN | ALL | *) \n'
             + '                                 NUMBER - ListingItems belonging to profileId \n'
             + '                                 OWN - ListingItems belonging to any profile \n'
             + '                                 ALL / * - ALL ListingItems\n'
