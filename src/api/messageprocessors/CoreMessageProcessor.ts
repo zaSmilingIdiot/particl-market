@@ -24,6 +24,7 @@ import PriorityQueue, { PriorityQueueOptions } from 'pm-queue/dist/priority-queu
 import { MessageQueuePriority } from '../enums/MessageQueuePriority';
 import { SmsgMessageStatus } from '../enums/SmsgMessageStatus';
 import { MarketplaceMessageProcessor } from './MarketplaceMessageProcessor';
+import { hasActionMessageType } from '../enums/ActionMessageTypes';
 
 export class CoreMessageProcessor implements MessageProcessorInterface {
 
@@ -135,7 +136,8 @@ export class CoreMessageProcessor implements MessageProcessorInterface {
     private async isMarketplaceMessage(msg: CoreSmsgMessage): Promise<boolean> {
         try {
             const marketplaceMessage: MarketplaceMessage = JSON.parse(msg.text);
-            return marketplaceMessage.action ? true : false;
+            const actionValue: string = (marketplaceMessage.action && marketplaceMessage.action.type) || '';
+            return hasActionMessageType(actionValue);
         } catch (e) {
             return false;
         }
